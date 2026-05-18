@@ -39,4 +39,12 @@ class HwReconViewModel : ViewModel() {
             _state.value = _state.value.copy(isRooted = rooted)
         }
     }
+
+    fun switchTab(tab: String) {
+        _state.value = _state.value.copy(currentTab = tab)
+    }
+
+    fun refreshCurrentTab() {
+        // Can be expanded later
+    }
 }
