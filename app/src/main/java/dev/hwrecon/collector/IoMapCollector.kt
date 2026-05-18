@@ -102,8 +102,7 @@ class IoMapCollector {
             // Sum counts across all CPUs
             val totalCount = parts.take(cpuCount).mapNotNull { it.toLongOrNull() }.sum()
             // Type field comes after the CPU count columns
-            val typeField  = parts.getOrNull(cpuCount)?.plus(" ")
-                           + (parts.getOrNull(cpuCount + 1) ?: "")
+           val typeField = "${parts.getOrNull(cpuCount) ?: ""} ${parts.getOrNull(cpuCount + 1) ?: ""}".trim()
             val device     = parts.drop(cpuCount + 2).joinToString(" ").trim()
 
             IrqEntry(
