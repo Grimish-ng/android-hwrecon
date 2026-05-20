@@ -12,17 +12,17 @@ import dev.hwrecon.util.DriverHintMap
  * platform device nodes to produce DT binding hints for driver identification.
  *
  * Key sources:
- *   /proc/device-tree/compatible       → root compatible strings
- *   /proc/device-tree/                 → full live DT (binary)
- *   /sys/firmware/devicetree/base/     → same, browsable node-by-node
- *   /data/local/tmp/dtc                → bundled static dtc binary (push via installBinary)
+ *   /proc/device-tree/compatible       -> root compatible strings
+ *   /proc/device-tree/                 -> full live DT (binary)
+ *   /sys/firmware/devicetree/base/     -> same, browsable node-by-node
+ *   /data/local/tmp/dtc                -> bundled static dtc binary (push via installBinary)
  */
 class DtCollector {
 
     private val dtBase = "/proc/device-tree"
     private val dtcBin = "/data/local/tmp/dtc"
 
-    // ── Public API ────────────────────────────────────────────────
+    // -- Public API ----
 
     suspend fun collect(): DtSummary {
         val compatibles = readRootCompatibles()
@@ -50,7 +50,7 @@ class DtCollector {
     suspend fun decompileDt(): String {
         val r = RootShell.run("$dtcBin -I fs $dtBase -O dts 2>/dev/null")
         if (r.success && r.output.isNotBlank()) return r.output
-        // dtc not available — fall back to manual property walk
+        // dtc not available -- fall back to manual property walk
         return manualDtDump()
     }
 
@@ -102,7 +102,7 @@ class DtCollector {
         return sb.toString()
     }
 
-    // ── Private helpers ───────────────────────────────────────────
+    // -- Private helpers ----
 
     /** Count nodes by listing directory entries under /proc/device-tree. */
     private suspend fun countNodes(): Int {

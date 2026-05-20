@@ -9,7 +9,7 @@ import dev.hwrecon.shell.RootShell
  * Reads the kernel ring buffer (dmesg) and filters it for driver-binding
  * events critical to device tree reverse-engineering:
  *   - probe success / failure / deferral
- *   - platform device ↔ driver binding
+ *   - platform device <-> driver binding
  *   - compatible string matches
  *   - HAL crash / respawn markers
  *   - firmware / blob not-found errors
@@ -35,7 +35,7 @@ class DmesgCollector {
         "warn", "defer", "retry", "calibration", "missing",
     )
 
-    // ── Public API ────────────────────────────────────────────────
+    // -- Public API ----
 
     suspend fun collect(): DmesgSummary {
         val raw = readDmesg()
@@ -55,7 +55,7 @@ class DmesgCollector {
         )
     }
 
-    // ── Raw dmesg ─────────────────────────────────────────────────
+    // -- Raw dmesg ----
 
     /**
      * Read the kernel ring buffer via `dmesg`.
@@ -83,11 +83,11 @@ class DmesgCollector {
         return r.output
     }
 
-    /** Read full dmesg (no filter) — useful for export. */
+    /** Read full dmesg (no filter) -- useful for export. */
     suspend fun readFullDmesg(): String =
         RootShell.run("dmesg 2>/dev/null").output
 
-    // ── Parsing ───────────────────────────────────────────────────
+    // -- Parsing ----
 
     fun parse(raw: String): List<DmesgEntry> =
         raw.lines()
@@ -137,7 +137,7 @@ class DmesgCollector {
         )
     }
 
-    // ── Failure extraction ────────────────────────────────────────
+    // -- Failure extraction ----
 
     /**
      * Cross-reference ERROR-level probe entries against known error codes
@@ -158,7 +158,7 @@ class DmesgCollector {
             }
             .distinctBy { it.driver }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    // -- Helpers ----
 
     /**
      * Extract a likely driver name from a dmesg line.
@@ -172,7 +172,7 @@ class DmesgCollector {
         val boundMatch = Regex("driver ([\\w_-]+) bound").find(body)
         if (boundMatch != null) return boundMatch.groupValues[1]
 
-        // "NAME: probe" — name before first colon
+        // "NAME: probe" -- name before first colon
         val colonIdx = body.indexOf(":")
         if (colonIdx > 0) {
             val candidate = body.substring(0, colonIdx).trim()
@@ -201,20 +201,20 @@ class DmesgCollector {
      */
     private fun explainErrorCode(code: String, context: String): String = when (code) {
         "-ENOENT"       -> "Missing firmware binary in /vendor/firmware or /firmware/image"
-        "-EPROBE_DEFER" -> "Dependency not yet ready — will retry; check ordering in DT"
-        "-ENODEV"       -> "Device not detected — check I2C/SPI address or power rail"
-        "-ENOMEM"       -> "Memory allocation failure — check CMA/DMA reserved regions in DT"
-        "-EINVAL"       -> "Invalid parameter — mismatched DT property or firmware version"
-        "-EACCES"       -> "Permission denied — SELinux policy or secureboot blocking access"
-        "-ETIMEDOUT"    -> "Communication timeout — check bus speed, pull-up resistors in DT"
-        "-EBUSY"        -> "Resource in use — duplicate DT node or conflicting driver"
-        "-EIO"          -> "I/O error — hardware not responding; check power and clock enables"
-        "-EOPNOTSUPP"   -> "Operation not supported — driver version mismatch with firmware"
+        "-EPROBE_DEFER" -> "Dependency not yet ready - will retry; check ordering in DT"
+        "-ENODEV"       -> "Device not detected - check I2C/SPI address or power rail"
+        "-ENOMEM"       -> "Memory allocation failure - check CMA/DMA reserved regions in DT"
+        "-EINVAL"       -> "Invalid parameter - mismatched DT property or firmware version"
+        "-EACCES"       -> "Permission denied - SELinux policy or secureboot blocking access"
+        "-ETIMEDOUT"    -> "Communication timeout - check bus speed, pull-up resistors in DT"
+        "-EBUSY"        -> "Resource in use - duplicate DT node or conflicting driver"
+        "-EIO"          -> "I/O error - hardware not responding; check power and clock enables"
+        "-EOPNOTSUPP"   -> "Operation not supported - driver version mismatch with firmware"
         else -> when {
             context.contains("firmware") -> "Firmware file missing from ramdisk or vendor partition"
             context.contains("calibration") -> "Sensor/thermal calibration data not found in NVRAM"
-            context.contains("clk")     -> "Clock not enabled — check gcc/cam_cc clock DT bindings"
-            else                        -> "Unknown — inspect full dmesg context for surrounding lines"
+            context.contains("clk")     -> "Clock not enabled - check gcc/cam_cc clock DT bindings"
+            else                        -> "Unknown - inspect full dmesg context for surrounding lines"
         }
     }
 }

@@ -1,4 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.HWReconApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        Theme.HwRecon — full-screen dark shell
+        Parent: Theme.AppCompat.NoActionBar (available in all minSdk 29+ builds)
+        The Compose surface covers the entire window; we only set window-level
+        colours here so the status/nav bars match before Compose draws.
+    -->
+    <style name="Theme.HwRecon" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">#0A0C0F</item>
+        <item name="android:statusBarColor">#0F1218</item>
+        <item name="android:navigationBarColor">#0F1218</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
 </resources>

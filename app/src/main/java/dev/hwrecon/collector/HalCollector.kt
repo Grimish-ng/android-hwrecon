@@ -7,11 +7,11 @@ import dev.hwrecon.shell.RootShell
  * HalCollector
  *
  * Enumerates HIDL and AIDL HAL interfaces on the device:
- *   /vendor/etc/vintf/manifest.xml              → declared HAL interfaces
- *   /vendor/etc/vintf/compatibility_matrix.xml  → required HAL versions
- *   /vendor/lib64/hw/                           → HAL implementation blobs
- *   /vendor/lib/hw/                             → 32-bit HAL blobs
- *   lshal                                       → live hwservicemanager state
+ *   /vendor/etc/vintf/manifest.xml              -> declared HAL interfaces
+ *   /vendor/etc/vintf/compatibility_matrix.xml  -> required HAL versions
+ *   /vendor/lib64/hw/                           -> HAL implementation blobs
+ *   /vendor/lib/hw/                             -> 32-bit HAL blobs
+ *   lshal                                       -> live hwservicemanager state
  *
  * Useful for device tree work:
  *   - Maps HAL interface names to their .so blobs
@@ -32,7 +32,7 @@ class HalCollector {
         "/system/lib64/hw",
     )
 
-    // ── Public API ────────────────────────────────────────────────
+    // -- Public API ----
 
     suspend fun collect(): HalSummary {
         val declared = collectVintfInterfaces()
@@ -52,7 +52,7 @@ class HalCollector {
         )
     }
 
-    // ── VINTF manifest ────────────────────────────────────────────
+    // -- VINTF manifest ----
 
     /**
      * Parse VINTF manifest XML to extract HAL interface declarations.
@@ -104,7 +104,7 @@ class HalCollector {
         return results
     }
 
-    // ── Raw blob enumeration ──────────────────────────────────────
+    // -- Raw blob enumeration ----
 
     /** List all .so blobs in known HAL blob directories. */
     suspend fun collectRawBlobs(): List<String> {
@@ -119,7 +119,7 @@ class HalCollector {
         return blobs.distinct().sorted()
     }
 
-    // ── lshal ─────────────────────────────────────────────────────
+    // -- lshal ----
 
     /**
      * Run lshal to query the hwservicemanager for live HAL process state.
@@ -134,7 +134,7 @@ class HalCollector {
         return fallback.output.ifBlank { "lshal not available on this build" }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    // -- Helpers ----
 
     /**
      * Determine ALIVE/DEAD/UNKNOWN for an interface from lshal output.
@@ -153,7 +153,7 @@ class HalCollector {
 
     /**
      * Infer a likely blob filename from an interface name.
-     * android.hardware.graphics.composer3 → libhwcomposer.so
+     * android.hardware.graphics.composer3 -> libhwcomposer.so
      */
     private fun inferBlobName(ifaceName: String): String {
         val blobHints = mapOf(
@@ -178,7 +178,7 @@ class HalCollector {
         return blobHints[key] ?: "${ifaceName.substringAfterLast('.').lowercase()}.default.so"
     }
 
-    /** Extract all blocks enclosed in <tagName>…</tagName>. */
+    /** Extract all blocks enclosed in <tagName>...</tagName>. */
     private fun extractXmlBlocks(xml: String, tagName: String): List<String> {
         val results = mutableListOf<String>()
         var start = 0
@@ -193,7 +193,7 @@ class HalCollector {
         return results
     }
 
-    /** Extract text content of the first occurrence of <tag>…</tag>. */
+    /** Extract text content of the first occurrence of <tag>...</tag>. */
     private fun extractXmlTag(xml: String, tag: String): String? {
         val open  = xml.indexOf("<$tag>").takeIf { it != -1 } ?: return null
         val close = xml.indexOf("</$tag>", open).takeIf { it != -1 } ?: return null

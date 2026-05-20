@@ -1,8 +1,8 @@
 package dev.hwrecon.model
 
-// ─────────────────────────────────────────────
+// ----
 //  Device Tree
-// ─────────────────────────────────────────────
+// ----
 
 data class DtNode(
     val name: String,
@@ -28,9 +28,20 @@ data class PlatformDevice(
     val driverHint: String,
 )
 
-// ─────────────────────────────────────────────
+// ----
 //  CPU / SoC
-// ─────────────────────────────────────────────
+// ----
+
+data class CpuInfo(
+    val processor: Int,
+    val implementer: String,
+    val architecture: String,
+    val variant: String,
+    val part: String,
+    val revision: String,
+    val features: List<String>,
+    val bogomips: String,
+)
 
 data class CpuCore(
     val id: Int,
@@ -70,9 +81,9 @@ data class RegulatorEntry(
     val consumers: List<String>,
 )
 
-// ─────────────────────────────────────────────
+// ----
 //  Kernel Modules
-// ─────────────────────────────────────────────
+// ----
 
 data class KernelModule(
     val name: String,
@@ -100,9 +111,9 @@ data class ModuleSummary(
     val errorCount: Int,
 )
 
-// ─────────────────────────────────────────────
+// ----
 //  HAL / Blobs
-// ─────────────────────────────────────────────
+// ----
 
 data class HalInterface(
     val name: String,
@@ -118,9 +129,9 @@ data class HalSummary(
     val lshalOutput: String,
 )
 
-// ─────────────────────────────────────────────
+// ----
 //  dmesg
-// ─────────────────────────────────────────────
+// ----
 
 enum class DmesgLevel { OK, WARN, ERROR, INFO }
 
@@ -150,9 +161,9 @@ data class DmesgSummary(
     val failures: List<ProbeFailure>,
 )
 
-// ─────────────────────────────────────────────
+// ----
 //  I/O Memory Map
-// ─────────────────────────────────────────────
+// ----
 
 data class IoMemRegion(
     val start: Long,
@@ -185,9 +196,9 @@ data class IoMapSummary(
     val pins: List<PinEntry>,
 )
 
-// ─────────────────────────────────────────────
+// ----
 //  Top-level aggregated result
-// ─────────────────────────────────────────────
+// ----
 
 data class HwReconReport(
     val deviceModel: String,

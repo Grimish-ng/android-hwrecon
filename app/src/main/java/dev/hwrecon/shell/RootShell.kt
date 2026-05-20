@@ -81,10 +81,4 @@ object RootShell {
         val cp = run("cp $sourcePath $dest && chmod 755 $dest")
         return cp.success
     }
-
-    /** Quick root check */
-    suspend fun isRootAvailable(): Boolean {
-        val r = run("id")
-        return r.success && r.output.contains("uid=0")
-    }
 }

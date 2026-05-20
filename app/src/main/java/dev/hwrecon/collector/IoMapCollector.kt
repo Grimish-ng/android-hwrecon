@@ -7,9 +7,9 @@ import dev.hwrecon.shell.RootShell
  * IoMapCollector
  *
  * Collects physical memory layout, interrupt assignments, and pin mux state:
- *   /proc/iomem          → physical address map (I/O regions, DRAM, reserved)
- *   /proc/interrupts     → IRQ number → device mapping with hit counts
- *   /sys/kernel/debug/pinctrl/  → pin mux function assignments
+ *   /proc/iomem          -> physical address map (I/O regions, DRAM, reserved)
+ *   /proc/interrupts     -> IRQ number -> device mapping with hit counts
+ *   /sys/kernel/debug/pinctrl/  -> pin mux function assignments
  *
  * The iomem map is critical for writing memory-mapped peripheral nodes in DT:
  * every `reg = <addr size>` pair in a DT node comes from this map.
@@ -17,7 +17,7 @@ import dev.hwrecon.shell.RootShell
  */
 class IoMapCollector {
 
-    // ── Public API ────────────────────────────────────────────────
+    // -- Public API ----
 
     suspend fun collect(): IoMapSummary {
         val regions    = collectIoMem()
@@ -31,7 +31,7 @@ class IoMapCollector {
         )
     }
 
-    // ── /proc/iomem ───────────────────────────────────────────────
+    // -- /proc/iomem ----
 
     /**
      * Parse /proc/iomem.
@@ -72,7 +72,7 @@ class IoMapCollector {
             .sortedBy { it.start }
     }
 
-    // ── /proc/interrupts ─────────────────────────────────────────
+    // -- /proc/interrupts ----
 
     /**
      * Parse /proc/interrupts.
@@ -85,7 +85,7 @@ class IoMapCollector {
         val lines = RootShell.lines("cat /proc/interrupts")
         if (lines.isEmpty()) return emptyList()
 
-        // First line is the CPU header — determine column count
+        // First line is the CPU header -- determine column count
         val cpuCount = lines[0].trim().split(Regex("\\s+")).size
 
         return lines.drop(1).mapNotNull { line ->
@@ -102,19 +102,22 @@ class IoMapCollector {
             // Sum counts across all CPUs
             val totalCount = parts.take(cpuCount).mapNotNull { it.toLongOrNull() }.sum()
             // Type field comes after the CPU count columns
-           val typeField = "${parts.getOrNull(cpuCount) ?: ""} ${parts.getOrNull(cpuCount + 1) ?: ""}".trim()
+            val typeField  = listOfNotNull(
+                parts.getOrNull(cpuCount),
+                parts.getOrNull(cpuCount + 1)
+            ).joinToString(" ")
             val device     = parts.drop(cpuCount + 2).joinToString(" ").trim()
 
             IrqEntry(
                 irqNumber = irqNum,
                 count     = totalCount,
-                type      = typeField?.trim() ?: "?",
-                device     = device.ifBlank { "unknown" },
+                type      = typeField.trim().ifBlank { "?" },
+                device    = device.ifBlank { "unknown" },
             )
         }.sortedByDescending { it.count }
     }
 
-    // ── /sys/kernel/debug/pinctrl ─────────────────────────────────
+    // -- /sys/kernel/debug/pinctrl ----
 
     /**
      * Dump pin mux state from the first available pinctrl controller.
@@ -145,7 +148,7 @@ class IoMapCollector {
         return parsePinGroups(r.output)
     }
 
-    // ── Parsers ───────────────────────────────────────────────────
+    // -- Parsers ----
 
     /**
      * Parse "pinmux-pins" output:
@@ -179,7 +182,7 @@ class IoMapCollector {
     }
 
     /**
-     * Parse "pingroups" output — alternative format on some kernels:
+     * Parse "pingroups" output -- alternative format on some kernels:
      *   group: qup0_se0_pins [0 1]
      *   function: qup0_se0
      */
@@ -210,7 +213,7 @@ class IoMapCollector {
         return entries
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
+    // -- Helpers ----
 
     /** Map a physical address range name to a DT node hint. */
     private fun inferDtNote(name: String, start: Long): String = when {

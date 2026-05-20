@@ -1,125 +1,159 @@
-# HW·RECON — Android Hardware Reconnaissance Tool
+# HW·RECON
 
-**HW·RECON** is a powerful, dark-themed Android app for deep hardware and kernel-level reconnaissance on **rooted** Android devices (with graceful fallback for non-rooted devices).
+> Hardware reconnaissance tool for Android — built for kernel developers, BSP engineers, and device tree reverse-engineers targeting **rooted devices**.
 
-It is designed for security researchers, reverse engineers, and developers who need detailed insight into:
-- Device Tree (DT)
-- CPU/SoC topology & clocks
-- Loaded kernel modules + vendor blobs
-- HIDL/AIDL HAL interfaces
-- dmesg probe/bind events with root-cause analysis
-- Physical memory map, interrupts, and pinmux state
+![Platform](https://img.shields.io/badge/platform-Android%2010%2B-brightgreen)
+![Root](https://img.shields.io/badge/root-required-red)
+![Language](https://img.shields.io/badge/language-Kotlin-purple)
+![UI](https://img.shields.io/badge/UI-Jetpack%20Compose-blue)
 
 ---
 
-## Features
+## What it does
 
-- **Full root shell integration** via `su -c` (coroutine-safe with timeout protection)
-- **6 specialized collectors**:
-  - Device Tree decompiler + platform device enumeration
-  - CPU core topology, frequency governors, clock tree, regulators
-  - Kernel modules + vendor `.ko` blobs with DT binding hints
-  - VINTF manifest + live `lshal` HAL state
-  - Smart dmesg filtering with error code explanations (`-ENOENT`, `EPROBE_DEFER`, etc.)
-  - I/O memory map, IRQ consumers, pinctrl pinmux
-- **Beautiful terminal-style Jetpack Compose UI** matching professional recon tools
-- **Reactive StateFlow architecture** — data loads on-demand per tab
-- **Export-ready** (easy to extend with JSON/tar.gz export)
-- Works great on Snapdragon 8 Gen series, Samsung Exynos, and other modern SoCs
+HW·RECON reads directly from `sysfs`, `procfs`, `debugfs`, and the live device tree to give you a complete hardware profile of a rooted Android device. The goal is to accelerate:
+
+- Writing or porting a **Device Tree Source** (`.dts` / `.dtsi`)
+- Identifying which **driver blobs** and **kernel modules** handle each peripheral
+- Understanding the **SoC peripheral topology** (I2C buses, SPI buses, clocks, regulators, pin mux)
+- Mapping **HAL interfaces** to their `.so` blobs and kernel drivers
+- Diagnosing **probe failures** and missing firmware at boot
+
+---
+
+## Collectors
+
+| Tab | Sources | Key output |
+|---|---|---|
+| **Device Tree** | `/proc/device-tree`, `dtc` binary | Root compatible strings, node tree, DTS fragment, platform device ↔ driver cross-reference |
+| **CPU / SoC** | `/proc/cpuinfo`, `/sys/devices/system/cpu`, `/sys/kernel/debug/clk` | Cluster topology, ARM part decoding, feature flags, clock tree, PMIC rails |
+| **Modules** | `/proc/modules`, `/vendor/lib/modules` | Loaded module list with DT compatible hints, vendor `.ko` blob enumeration |
+| **HAL / Blobs** | `/vendor/etc/vintf/manifest.xml`, `/vendor/lib64/hw`, `lshal` | VINTF interface table, blob inventory, live HAL process state |
+| **dmesg** | `su -c dmesg` | Filtered probe/bind log, error code → root cause cross-reference, DT node annotation |
+| **I/O Map** | `/proc/iomem`, `/proc/interrupts`, `/sys/kernel/debug/pinctrl` | Physical memory regions, IRQ → device map, GPIO pin mux state |
+
+---
+
+## Architecture
+
+```
+Kernel sources (/proc, /sys, /firmware/devicetree)
+        │
+        ▼
+RootShell  (su -c via ProcessBuilder · coroutine-dispatched)
+        │
+        ├── DtCollector       ← device tree walker + dtc decompiler
+        ├── CpuCollector      ← cpuinfo + clock + regulator tree
+        ├── ModuleCollector   ← /proc/modules + vendor blob enum
+        ├── HalCollector      ← VINTF XML parser + lshal runner
+        ├── DmesgCollector    ← boot log filter + probe failure analyser
+        └── IoMapCollector    ← iomem + interrupts + pinctrl
+                │
+                ▼
+        Kotlin Coroutines / StateFlow / ViewModel
+                │
+                ▼
+        Jetpack Compose UI  ←→  ReconExporter (JSON + ZIP)
+```
+
+---
+
+## Project structure
+
+```
+hwrecon/
+├── app/src/main/java/dev/hwrecon/
+│   ├── MainActivity.kt
+│   ├── collector/
+│   │   ├── DtCollector.kt
+│   │   ├── CpuCollector.kt
+│   │   ├── ModuleCollector.kt
+│   │   ├── HalCollector.kt
+│   │   ├── DmesgCollector.kt
+│   │   └── IoMapCollector.kt
+│   ├── model/
+│   │   └── Models.kt           ← all data classes
+│   ├── shell/
+│   │   └── RootShell.kt        ← su command executor
+│   ├── ui/
+│   │   ├── ReconViewModel.kt   ← orchestration + StateFlow
+│   │   ├── ReconScreen.kt      ← all Compose panels
+│   │   └── ReconComponents.kt  ← design system components
+│   ├── export/
+│   │   └── ReconExporter.kt    ← JSON + ZIP report generation
+│   └── util/
+│       ├── ArmPartMap.kt       ← ARM CPU part number → core name
+│       └── DriverHintMap.kt    ← DT compatible ↔ module name
+└── gradle/
+    └── libs.versions.toml
+```
 
 ---
 
 ## Requirements
 
-- **Rooted Android device** (recommended for full functionality)
-- Android 8.0+ (API 26+)
-- `su` binary available (Magisk, KernelSU, etc.)
+| Requirement | Detail |
+|---|---|
+| Android | 10+ (API 29+) |
+| Root | Required — Magisk or equivalent |
+| `dtc` binary | Optional — push a static ARM64 build to `/data/local/tmp/dtc` for DTS decompilation |
+| Architecture | ARM64 (tested) · ARM32 (untested) |
 
-Non-rooted devices will show limited read-only data and a clear warning.
+### Push `dtc` binary
+
+```bash
+# Build or grab a prebuilt static ARM64 dtc
+adb push dtc /data/local/tmp/dtc
+adb shell "su -c chmod 755 /data/local/tmp/dtc"
+```
+
+Prebuilt static `dtc` binaries for Android are available from the
+[dtc-static-aarch64](https://github.com/sbwml/dtc-static) project.
 
 ---
 
-## Building the APK
-
-### Option 1: Android Studio (Recommended)
-
-1. Clone or download this repository.
-2. Open the project in **Android Studio** (Hedgehog or newer recommended).
-3. Let Android Studio sync Gradle and generate the wrapper if prompted.
-4. Click **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-5. The signed debug APK will appear in `app/build/outputs/apk/debug/`.
-
-### Option 2: Command Line
+## Building
 
 ```bash
-# Generate Gradle wrapper (first time only)
-gradle wrapper
-
-# Build debug APK
+# Clone and build debug APK
+git clone https://github.com/youruser/hwrecon.git
+cd hwrecon
 ./gradlew assembleDebug
+
+# Install to a connected rooted device
+adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The APK will be at:
-`app/build/outputs/apk/debug/app-debug.apk`
+Minimum SDK 29, target SDK 35, compiled with Kotlin 2.0 and AGP 8.5.
 
 ---
 
-## Pushing to GitHub
+## Export
 
-```bash
-git init
-git add .
-git commit -m "Initial commit: HW·RECON v0.1 - Full Android hardware recon tool"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/hw-recon.git
-git push -u origin main
-```
+Tap **RUN ALL** to collect all subsystems simultaneously. Reports can be exported from the overflow menu as:
 
-**Recommended repository settings:**
-- Add topics: `android`, `root`, `reverse-engineering`, `device-tree`, `kernel`, `hal`, `recon`
-- Enable "Releases" for future APK distribution
-- Add a `.github/workflows` CI if you want automated builds
+- **JSON** — structured, machine-readable; suitable for parsing in scripts or feeding to a DT generator
+- **ZIP** — full text dump with one file per subsystem, plus raw DTS and lshal output; ideal for sharing with the team or attaching to a bug report
+
+Exports land in `/sdcard/Android/data/dev.hwrecon/files/hwrecon/` and are shareable via any installed app.
 
 ---
 
-## Project Structure
+## Adding a new collector
 
-```
-HWReconApp/
-├── app/
-│   ├── src/main/java/dev/hwrecon/
-│   │   ├── MainActivity.kt          # Full Compose UI (7 tabs)
-│   │   ├── collector/               # All 6 data collectors
-│   │   ├── model/                   # Data classes
-│   │   ├── shell/                   # RootShell.kt
-│   │   ├── util/                    # DriverHintMap, ArmPartMap
-│   │   └── viewmodel/               # HwReconViewModel
-│   └── build.gradle.kts
-├── build.gradle.kts
-├── settings.gradle.kts
-├── .gitignore
-└── README.md
-```
+1. Create `YourCollector.kt` in `collector/` with a `suspend fun collect(): YourSummary`
+2. Add `YourSummary` data class to `Models.kt`
+3. Add a `runYourCollector()` function to `ReconViewModel` following the existing pattern
+4. Add a new entry to the `ReconTab` enum and a Compose panel function in `ReconScreen.kt`
 
 ---
 
-## Future Enhancements (Roadmap)
+## Disclaimer
 
-- One-tap full report export (JSON + tar.gz)
-- Expandable Device Tree viewer
-- Firmware blob scanner
-- Thermal zones & power rails
-- SELinux policy dumper
-- Web dashboard export option
+This tool is intended for legitimate kernel development, device bring-up, and hardware analysis on devices you own. Reading `/proc` and `/sys` on a rooted device is legal and non-destructive — this app only reads, never writes.
 
 ---
 
 ## License
 
-MIT License — feel free to use, modify, and contribute.
-
-**Built with ❤️ for the Android reverse engineering community.**
-
----
-
-*HW·RECON v0.1 — May 2026*
+MIT — see [LICENSE](LICENSE)
